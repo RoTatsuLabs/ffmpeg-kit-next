@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds FFmpegKitNext for Android from the checkout in $KIT_DIR and stages a Maven bundle in $OUT_DIR.
-# Inputs: KIT_DIR, OUT_DIR, ARCHS (comma list for --arch), PROFILE (full|minimal), REVISION, GROUP_ID.
+# Inputs: KIT_DIR, OUT_DIR, ARCHS (comma list for --arch), PROFILE (full|minimal), REVISION (r<n> or auto), GROUP_ID.
 set -euo pipefail
 
 : "${KIT_DIR:?}" "${OUT_DIR:?}" "${ARCHS:?}" "${PROFILE:?}" "${REVISION:?}" "${GROUP_ID:?}"
@@ -29,6 +29,16 @@ fi
 bundle=$(find prebuilt -maxdepth 1 -type d -name 'bundle-android-aar-*-maven' | head -n 1)
 dir=$(find "$bundle/com/arthenica/ffmpeg-kit-next" -mindepth 1 -maxdepth 1 -type d | head -n 1)
 upstream=$(basename "$dir")
+
+if [ "$REVISION" = auto ]; then
+  owner="${GITHUB_REPOSITORY_OWNER:?}"
+  kind=$(gh api "/users/$owner" --jq '.type' 2>/dev/null || echo User)
+  [ "$kind" = Organization ] && kind=orgs || kind=users
+  last=$(gh api --paginate "/$kind/$owner/packages/maven/${GROUP_ID}.ffmpeg-kit-next/versions" --jq '.[].name' 2>/dev/null \
+    | sed -n "s/^${upstream//./\\.}-r\([0-9][0-9]*\)\$/\1/p" | sort -n | tail -n 1 || true)
+  REVISION="r$(( ${last:-0} + 1 ))"
+fi
+
 version="${upstream}-${REVISION}"
 
 dest="$OUT_DIR/${GROUP_ID//.//}/ffmpeg-kit-next/$version"

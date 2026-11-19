@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       revision:
-        description: Revision of this build, for example r1 (a version can only be published once)
+        description: Revision of this build, for example r1, or auto for the next free one (a version can only be published once)
         required: true
-        default: r1
+        default: auto
         type: string
       profile:
         description: full builds everything upstream does; minimal keeps only audio decoding, demuxing and PCM output (experimental)
@@ -90,6 +90,7 @@ jobs:
       - name: Build
         id: build
         env:
+          GH_TOKEN: ${{ github.token }}
           KIT_DIR: ${{ github.workspace }}
           OUT_DIR: ${{ github.workspace }}/maven
           PROFILE: ${{ inputs.profile }}
